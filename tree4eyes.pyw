@@ -1,3 +1,6 @@
+# tree4eyes r0
+__version__ = 'r0v0.1-dev.pooling.1'
+
 import os
 import sys
 import time
@@ -11,22 +14,21 @@ import anytree as at
 
 def opentree():
     try:
-        bt_open.configure(state="disabled")
+        bt_open.configure(state='disabled')
 
         file_path = filedialog.askopenfilename(filetypes=((('Text files'), '*.txt'), (('All files'), '*.*')))
         if not file_path:
             return
 
+        infotxt.set('Loading tree file...')
+        root.update_idletasks()
         tree.delete(*tree.get_children())
+
+        fsize = os.path.getsize(file_path)
+        tsize = 0
+        pupd = time.time()
+        nupd = pupd 
         with open(file_path, 'r') as file:
-            lines = 0
-            for line in file:
-                lines += 1
-            file.seek(0)
-
-            progb['value'] = 0
-            progb.configure(mode='determinate')
-
             global tr
             iid = 1
             file.readline()
@@ -36,17 +38,11 @@ def opentree():
             tree.insert('', tk.END, text=path[:(len(path) - 1)], iid=0, open=True)
             tr = at.AnyNode(id=path[:(len(path) - 1)], iid=0, isdir=True)
             stack = [tr, tr]
-                
 
             while True:
-                _proglast = progb['value']
-                _prog = int(100 * iid / lines)
-                if _prog - _proglast > 1:
-                    progb['value'] = _prog
-                    uiupdate()
-
                 isdir = False
                 line = file.readline()
+                tsize += len(line)
                 if not line:
                     break
                 if not line.startswith((' ', '+', '|', '\\')):
@@ -67,23 +63,30 @@ def opentree():
                 stack = stack[:(level + 1)]
                 stack.append(node)
                 iid += 1
+
+                nupd = time.time()
+                if nupd - pupd > .25:
+                    pupd = nupd
+                    infotxt.set(f'Loading tree file, {(tsize / fsize * 100):.2f}%...')
+                    root.update_idletasks()
         
         tree.insert(0, tk.END, text='loading...', iid=-1, open=False)
         treelevel(0)
         tree.delete(-1)
     except Exception as e:
         tree.delete(*tree.get_children())
-        messagebox.showerror("Open file failed", f'{type(e).__name__}\n{e}')
+        infotxt.set('An error occurred loading the file')
+        root.update_idletasks()
+        messagebox.showerror('Open file failed', f'{type(e).__name__}\n{e}')
     finally: 
-        progb['value'] = 0
-        bt_open.configure(state="normal")
+        bt_open.configure(state='normal')
+    infotxt.set('File successfully loaded')
+    root.update_idletasks()
 
 
 def treelevel(piid):
     global dummycount, tr
-    progb.configure(mode='indeterminate')
 
-    # t = time.time()
     # search optimization
     # TODO list of parent node references for iid-s that had already been loaded  
     n = piid
@@ -94,11 +97,8 @@ def treelevel(piid):
             break
         lev += 1
     parent = at.search.find_by_attr(tr, int(piid), name='iid', maxlevel=lev)
-    # print(time.time() - t)
     if parent:
         for c in parent.children:
-            progb['value'] = progb['value'] + 0.01
-            uiupdate()
             if c.isdir:
                 tree.insert(piid, tk.END, text=c.id, image=ico_folder, iid=c.iid, open=False)
                 if c.children:
@@ -107,17 +107,21 @@ def treelevel(piid):
             else:
                 tree.insert(piid, tk.END, text=c.id, image=ico_file, iid=c.iid, open=False)
 
-    progb['value'] = 0
-    progb.configure(mode='determinate')
-    bt_open.configure(state="normal")
+    bt_open.configure(state='normal')
     pass
 
 
 def treeexpand(event):
-    piid = tree.selection()[0]
-    if tree.item(tree.get_children(piid)[0])['text'] == 'loading...':
-        treelevel(piid)
-        tree.delete(tree.get_children(piid)[0])
+    infotxt.set('Loading file structure...')
+    root.update_idletasks()
+    try:
+        piid = tree.selection()[0]
+        if tree.item(tree.get_children(piid)[0])['text'] == 'loading...':
+            treelevel(piid)
+            tree.delete(tree.get_children(piid)[0])
+    finally:
+        infotxt.set('')
+        root.update_idletasks()
 
 
 def rmenu_raise(event):
@@ -145,17 +149,8 @@ def cleanup():
     return
 
 
-def uiupdate():
-    global uilastup
-    now = time.time()
-    if now - uilastup > 0.05:
-        root.update_idletasks()
-        uilastup = now
-
-
 ###
 
-uilastup = time.time()
 
 file_path = ''
 dummycount = 2
@@ -165,11 +160,13 @@ root = tk.Tk()
 root.title('tree4eyes')
 root.geometry('400x500')
 
+infotxt = tk.StringVar()
+
 bar = tk.Frame(root)
-bt_open = tk.Button(bar, text="Open...", command=opentree)
+bt_open = tk.Button(bar, text='Open...', command=opentree)
 bt_open.pack(side=tk.LEFT, padx=5, pady=5, ipadx=2)
-progb = ttk.Progressbar(bar, orient='horizontal', mode='determinate', length=280)
-progb.pack(side=tk.LEFT, fill='x')
+l_infotxt=tk.Label(bar, textvariable=infotxt, width=255)
+l_infotxt.pack(side=tk.LEFT, fill='x')
 bar.pack(side=tk.TOP, fill='x')
 
 scrollbar = tk.Scrollbar(root, orient=tk.VERTICAL)
@@ -179,9 +176,9 @@ scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 scrollbar.config(command=tree.yview)
 
 rmenu = tk.Menu(tree, tearoff=0)
-rmenu.add_command(label="Copy path", command=copypath)
-tree.bind("<Button-3>", rmenu_raise)
-root.protocol("WM_DELETE_WINDOW", cleanup)  # needed coz shutdown hans for large trees
+rmenu.add_command(label='Copy path', command=copypath)
+tree.bind('<Button-3>', rmenu_raise)
+root.protocol('WM_DELETE_WINDOW', cleanup)  # needed coz shutdown hangs for large trees
 tree.bind('<<TreeviewOpen>>', treeexpand)
 
 ico_app_raw = 'R0lGODlhEAAQAHcAACH5BAkKAAAALAAAAAAQABAAgAAAAAgICAImhI+pGO1hYJKNLVipmzsCuVhd+JXkgT2VAqKhGj2sRXbjief6UQAAOw=='
@@ -192,5 +189,6 @@ ico_folder_raw = 'R0lGODlhDAAMAHcAACH5BAkKAAAALAAAAAAMAAwAgAAAAAEBAQIVhI+pyxuPnj
 ico_folder = tk.PhotoImage(data=ico_folder_raw)
 
 root.iconphoto(False, ico_app)
+infotxt.set('tree4eyes r0 ' + __version__[2:])
 root.mainloop()
 
