@@ -14,6 +14,8 @@ you can get a tree file by running this for desired path (or without a path for 
 
 after that you can run the app (granted you have Python installed) and browse through the tree. you can also copy selected element's path from context menu
 
+you can download latest release at https://github.com/keycattie/tree4eyes/releases
+
 **known issues:**
 
 - can open and try to process literally any file;
