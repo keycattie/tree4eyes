@@ -4,6 +4,8 @@ quick, dirty and sloppy app to help you browse tree command output easily!
 
 *works with Windows' `tree` command output* 
 
+![image](https://user-images.githubusercontent.com/77988565/132970861-14acfc07-26f5-4fb2-9cef-470ce0e58bc9.png)
+
 # usage
 
 you can get a tree file by running this for desired path (or without a path for current folder) in the command prompt
