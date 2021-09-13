@@ -19,7 +19,9 @@ you can download latest release at https://github.com/keycattie/tree4eyes/releas
 **known issues:**
 
 - can open and try to process literally any file;
-- doesnt support command line arguments
+- doesnt support command line arguments;
+- enormous memory footprint;
+- big problems loading files over 10MB;
 - janky af
 
 **license:** MIT
