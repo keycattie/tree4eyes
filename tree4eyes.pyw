@@ -70,7 +70,7 @@ def opentree():
                     infotxt.set(f'Loading tree file, {(tsize / fsize * 100):.2f}%...')
                     root.update_idletasks()
         
-        tree.insert(0, tk.END, text='loading...', iid=-1, open=False)
+        tree.insert(0, tk.END, text='/...', iid=-1, open=False)
         treelevel(0)
         tree.delete(-1)
     except Exception as e:
@@ -102,7 +102,7 @@ def treelevel(piid):
             if c.isdir:
                 tree.insert(piid, tk.END, text=c.id, image=ico_folder, iid=c.iid, open=False)
                 if c.children:
-                    tree.insert(c.iid, tk.END, text='loading...', iid=-dummycount, open=False)
+                    tree.insert(c.iid, tk.END, text='/...', iid=-dummycount, open=False)
                     dummycount += 1
             else:
                 tree.insert(piid, tk.END, text=c.id, image=ico_file, iid=c.iid, open=False)
@@ -116,7 +116,7 @@ def treeexpand(event):
     root.update_idletasks()
     try:
         piid = tree.selection()[0]
-        if tree.item(tree.get_children(piid)[0])['text'] == 'loading...':
+        if tree.item(tree.get_children(piid)[0])['text'] == '/...':
             treelevel(piid)
             tree.delete(tree.get_children(piid)[0])
     finally:
