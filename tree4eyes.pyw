@@ -34,9 +34,7 @@ def opentree():
             iid = 1
             file.readline()
             file.readline()
-            # tree.heading('#0', text=file_path, anchor='w')
             path = file.readline()
-            # tree.insert('', tk.END, text=path[:(len(path) - 1)], iid=0, open=True)
             tree.insert('', tk.END, text=path[:(len(path) - 1)], values=('Dir'), iid=0, open=True)
             tr = at.AnyNode(id=path[:(len(path) - 1)], iid=0, isdir=True)
             stack = [tr, tr]
@@ -72,10 +70,7 @@ def opentree():
                     infotxt.set(f'Loading tree file, {(tsize / fsize * 100):.2f}%...')
                     root.update_idletasks()
         
-        # tree.insert(0, tk.END, text='/...', iid=-1, open=False)
-        # tree.insert(0, tk.END, values=('/...', 'Dir', 'No'), iid=-1, open=False)
         treelevel(0)
-        # tree.delete(-1)
         tree.item(0, tags=('ld', ))
     except Exception as e:
         tree.delete(*tree.get_children())
@@ -104,13 +99,11 @@ def treelevel(piid):
     if parent:
         for c in parent.children:
             if c.isdir:
-                # tree.insert(piid, tk.END, text=c.id, image=ico_folder, iid=c.iid, open=False)
                 tree.insert(piid, tk.END, text=c.id, values=('Dir'), image=ico_folder, iid=c.iid, open=False)
                 if c.children:
                     tree.insert(c.iid, tk.END, text='/...', iid=-dummycount, open=False)
                     dummycount += 1
             else:
-                # tree.insert(piid, tk.END, text=c.id, image=ico_file, iid=c.iid, open=False)
                 tree.insert(piid, tk.END, text=c.id, values=('File'), image=ico_file, iid=c.iid, open=False)
 
     bt_open.configure(state='normal')
@@ -158,16 +151,6 @@ def cleanup():
     return
 
 
-# def treeview_sort_column(tv, col, reverse):
-#     l = [(tv.set(k, col), k) for k in tv.get_children('')]
-#     l.sort(reverse=reverse)
-#     for index, (val, k) in enumerate(l):
-#         tv.move(k, '', index)
-#     # reverse sort next time
-#     tv.heading(col, command=lambda: \
-#                treeview_sort_column(tv, col, not reverse))
-
-
 ###
 
 
@@ -192,10 +175,6 @@ scrollbar = tk.Scrollbar(root, orient=tk.VERTICAL)
 columns = ('Type', )
 tree = ttk.Treeview(root, columns=columns, show='tree headings', \
     displaycolumns=('Type'), yscrollcommand=scrollbar.set)
-# for col in columns:
-#     tree.heading(col, text=col, command=lambda: \
-#                      treeview_sort_column(tree, col, False))
-#     tree.heading(col, text=col)
 tree.column('#0', stretch=tk.YES)
 tree.column('Type', stretch=tk.NO, width=32)
 ldfont = font.nametofont("TkDefaultFont").copy()
