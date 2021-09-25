@@ -9,6 +9,7 @@ import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
+from tkinter import font
 import anytree as at
 
 
@@ -33,9 +34,10 @@ def opentree():
             iid = 1
             file.readline()
             file.readline()
-            tree.heading('#0', text=file_path, anchor='w')
+            # tree.heading('#0', text=file_path, anchor='w')
             path = file.readline()
-            tree.insert('', tk.END, text=path[:(len(path) - 1)], iid=0, open=True)
+            # tree.insert('', tk.END, text=path[:(len(path) - 1)], iid=0, open=True)
+            tree.insert('', tk.END, text=path[:(len(path) - 1)], values=('Dir'), iid=0, open=True)
             tr = at.AnyNode(id=path[:(len(path) - 1)], iid=0, isdir=True)
             stack = [tr, tr]
 
@@ -70,9 +72,11 @@ def opentree():
                     infotxt.set(f'Loading tree file, {(tsize / fsize * 100):.2f}%...')
                     root.update_idletasks()
         
-        tree.insert(0, tk.END, text='/...', iid=-1, open=False)
+        # tree.insert(0, tk.END, text='/...', iid=-1, open=False)
+        # tree.insert(0, tk.END, values=('/...', 'Dir', 'No'), iid=-1, open=False)
         treelevel(0)
-        tree.delete(-1)
+        # tree.delete(-1)
+        tree.item(0, tags=('ld', ))
     except Exception as e:
         tree.delete(*tree.get_children())
         infotxt.set('An error occurred loading the file')
@@ -100,12 +104,14 @@ def treelevel(piid):
     if parent:
         for c in parent.children:
             if c.isdir:
-                tree.insert(piid, tk.END, text=c.id, image=ico_folder, iid=c.iid, open=False)
+                # tree.insert(piid, tk.END, text=c.id, image=ico_folder, iid=c.iid, open=False)
+                tree.insert(piid, tk.END, text=c.id, values=('Dir'), image=ico_folder, iid=c.iid, open=False)
                 if c.children:
                     tree.insert(c.iid, tk.END, text='/...', iid=-dummycount, open=False)
                     dummycount += 1
             else:
-                tree.insert(piid, tk.END, text=c.id, image=ico_file, iid=c.iid, open=False)
+                # tree.insert(piid, tk.END, text=c.id, image=ico_file, iid=c.iid, open=False)
+                tree.insert(piid, tk.END, text=c.id, values=('File'), image=ico_file, iid=c.iid, open=False)
 
     bt_open.configure(state='normal')
     pass
@@ -116,9 +122,11 @@ def treeexpand(event):
     root.update_idletasks()
     try:
         piid = tree.selection()[0]
-        if tree.item(tree.get_children(piid)[0])['text'] == '/...':
+        # if tree.item(tree.get_children(piid)[0])['text'] == '/...':
+        if not tree.tag_has('ld', piid):
             treelevel(piid)
             tree.delete(tree.get_children(piid)[0])
+            tree.item(piid, tags=('ld', ))
     finally:
         infotxt.set('')
         root.update_idletasks()
@@ -131,6 +139,7 @@ def rmenu_raise(event):
         rmenu.grab_release()
 
 
+# TODO broken
 def copypath():
     item_iid = tree.selection()[0]
     parent_iid = tree.parent(item_iid)
@@ -147,6 +156,16 @@ def cleanup():
     tree.delete(*tree.get_children())
     root.destroy()
     return
+
+
+# def treeview_sort_column(tv, col, reverse):
+#     l = [(tv.set(k, col), k) for k in tv.get_children('')]
+#     l.sort(reverse=reverse)
+#     for index, (val, k) in enumerate(l):
+#         tv.move(k, '', index)
+#     # reverse sort next time
+#     tv.heading(col, command=lambda: \
+#                treeview_sort_column(tv, col, not reverse))
 
 
 ###
@@ -170,7 +189,18 @@ l_infotxt.pack(side=tk.LEFT, fill='x')
 bar.pack(side=tk.TOP, fill='x')
 
 scrollbar = tk.Scrollbar(root, orient=tk.VERTICAL)
-tree = ttk.Treeview(root, yscrollcommand=scrollbar.set)
+columns = ('Type', )
+tree = ttk.Treeview(root, columns=columns, show='tree headings', \
+    displaycolumns=('Type'), yscrollcommand=scrollbar.set)
+# for col in columns:
+#     tree.heading(col, text=col, command=lambda: \
+#                      treeview_sort_column(tree, col, False))
+#     tree.heading(col, text=col)
+tree.column('#0', stretch=tk.YES)
+tree.column('Type', stretch=tk.NO, width=32)
+ldfont = font.nametofont("TkDefaultFont").copy()
+ldfont.config(underline=1)
+tree.tag_configure('ld', font=ldfont)
 tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 scrollbar.config(command=tree.yview)
