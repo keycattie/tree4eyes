@@ -12,33 +12,43 @@ from tkinter import messagebox
 from tkinter import font
 
 
-def _levelinfo(s):
-    level = 0
-    isdir = False
-    while s.startswith(('|   ', '    '), level * 4):
-        level += 1
-    if s.startswith(('+---', '\---'), level * 4):
-        level += 1
-        isdir = True
-    return (level, isdir)
+def _level(s):
+    l = 0
+    while s.startswith(('|   ', '    '), l * 4):
+        l += 1
+    if s.startswith(('+---', '\---'), l * 4):
+        l += 1
+    return l
 
 
-def seektree(file, piid):
+def _levelcheck(s, l):
+    if s.startswith(('|   ', '    '), l * 4):
+        if not s.startswith(('|   ', '    ', '+---', '\---'), (l + 1) * 4):
+            return 1 # file
+        return 0 # inside
+    elif s.startswith(('+---', '\---'), l * 4):
+        return 2 # folder
+    return -1 # outside
+
+
+def seektree(file, iid):
     items = []
-    file.seek(int (piid), 0)
-    slv = _levelinfo(file.readline())[0]
+    file.seek(int (iid), 0)
+    line = file.readline()
+    last = line
+    slv = _level(line)
     while True:
-        iid = file.tell()
+        iid = len(last.encode('utf-8')) + iid + 1
         line = file.readline()
-        lvi = _levelinfo(line)
-        if lvi[0] <= slv:
+        lv = _levelcheck(line, slv)
+        if lv == -1:
             break
-        if lvi[0] != slv + 1:
+        if (lv == 0) or ((len(line) - 1) - (4 * (slv + 1)) == 0):
+            last = line
             continue
-        line = line[(4 * lvi[0]):(len(line) - 1)] # endl removal
-        if not line:
-            continue  # last dir entry is always empty
-        items.append((iid, line, lvi[1]))
+        last = line
+        line = line[(4 * (slv + 1)):(len(line) - 1)]
+        items.append((iid, line, lv == 2))
     return items
 
 
@@ -77,7 +87,16 @@ def opentree():
 def treelevel(piid):
     global dummycount, tr, file
 
-    for c in seektree(file, int(piid)):
+    # res = []
+    # import cProfile
+    # import pstats
+    # with cProfile.Profile() as pr:
+    res = seektree(file, int(piid))
+    # stats = pstats.Stats(pr)
+    # stats.sort_stats(pstats.SortKey.TIME)
+    # stats.print_stats()
+
+    for c in res:
         if c[2]:
             tree.insert(piid, tk.END, text=c[1], values=('Dir'), image=ico_folder, iid=c[0], open=False)
             # if c.children:
