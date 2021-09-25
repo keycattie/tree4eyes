@@ -10,104 +10,84 @@ from tkinter import ttk
 from tkinter import filedialog
 from tkinter import messagebox
 from tkinter import font
-import anytree as at
+
+
+def _levelinfo(s):
+    level = 0
+    isdir = False
+    while s.startswith(('|   ', '    '), level * 4):
+        level += 1
+    if s.startswith(('+---', '\---'), level * 4):
+        level += 1
+        isdir = True
+    return (level, isdir)
+
+
+def seektree(file, piid):
+    items = []
+    file.seek(int (piid), 0)
+    slv = _levelinfo(file.readline())[0]
+    while True:
+        iid = file.tell()
+        line = file.readline()
+        lvi = _levelinfo(line)
+        if lvi[0] <= slv:
+            break
+        if lvi[0] != slv + 1:
+            continue
+        line = line[(4 * lvi[0]):(len(line) - 1)] # endl removal
+        if not line:
+            continue  # last dir entry is always empty
+        items.append((iid, line, lvi[1]))
+    return items
 
 
 def opentree():
-    try:
-        bt_open.configure(state='disabled')
+    global file, tr
+    # try:
+    bt_open.configure(state='disabled')
 
-        file_path = filedialog.askopenfilename(filetypes=((('Text files'), '*.txt'), (('All files'), '*.*')))
-        if not file_path:
-            return
+    file_path = filedialog.askopenfilename(filetypes=((('Text files'), '*.txt'), (('All files'), '*.*')))
+    if not file_path:
+        return
 
-        infotxt.set('Loading tree file...')
-        root.update_idletasks()
-        tree.delete(*tree.get_children())
-
-        fsize = os.path.getsize(file_path)
-        tsize = 0
-        pupd = time.time()
-        nupd = pupd 
-        with open(file_path, 'r') as file:
-            global tr
-            iid = 1
-            file.readline()
-            file.readline()
-            path = file.readline()
-            tree.insert('', tk.END, text=path[:(len(path) - 1)], values=('Dir'), iid=0, open=True)
-            tr = at.AnyNode(id=path[:(len(path) - 1)], iid=0, isdir=True)
-            stack = [tr, tr]
-
-            while True:
-                isdir = False
-                line = file.readline()
-                tsize += len(line)
-                if not line:
-                    break
-                if not line.startswith((' ', '+', '|', '\\')):
-                    continue
-                level = 0
-
-                while line.startswith(('|   ', '    ')):
-                    line = line[4:]
-                    level += 1
-                if line.startswith(('+---', '\---')):
-                    line = line[4:]
-                    level += 1
-                    isdir = True
-                line = line[:(len(line) - 1)] # endl removal
-                if not line:
-                    continue  # last dir entry is always empty
-                node = at.AnyNode(id=line, parent=stack[level], iid=iid, isdir=isdir)
-                stack = stack[:(level + 1)]
-                stack.append(node)
-                iid += 1
-
-                nupd = time.time()
-                if nupd - pupd > .25:
-                    pupd = nupd
-                    infotxt.set(f'Loading tree file, {(tsize / fsize * 100):.2f}%...')
-                    root.update_idletasks()
-        
-        treelevel(0)
-        tree.item(0, tags=('ld', ))
-    except Exception as e:
-        tree.delete(*tree.get_children())
-        infotxt.set('An error occurred loading the file')
-        root.update_idletasks()
-        messagebox.showerror('Open file failed', f'{type(e).__name__}\n{e}')
-    finally: 
-        bt_open.configure(state='normal')
-    infotxt.set('File successfully loaded')
+    infotxt.set('Loading tree file...')
     root.update_idletasks()
+    tree.delete(*tree.get_children())
+    file = open(file_path, 'r')
+    iid = 1
+    file.readline()
+    file.readline()
+    sk = file.tell()
+    path = file.readline()
+    tree.insert('', tk.END, text='root', values=('Dir'), iid=sk, open=True, tags=('ld', ))
+    treelevel(sk)
+    # except Exception as e:
+    #     # tree.delete(*tree.get_children()) # TODO do i need this???
+    #     infotxt.set('An error occurred loading the file')
+    #     root.update_idletasks()
+    #     messagebox.showerror('Open file failed', f'{type(e).__name__}\n{e}')
+    # finally: 
+    bt_open.configure(state='normal')
+
+    infotxt.set('File successfully loaded')
+    # root.update_idletasks()
 
 
 def treelevel(piid):
-    global dummycount, tr
+    global dummycount, tr, file
 
-    # search optimization
-    # TODO list of parent node references for iid-s that had already been loaded  
-    n = piid
-    lev = 1
-    while True:
-        n = tree.parent(n)
-        if not n:
-            break
-        lev += 1
-    parent = at.search.find_by_attr(tr, int(piid), name='iid', maxlevel=lev)
-    if parent:
-        for c in parent.children:
-            if c.isdir:
-                tree.insert(piid, tk.END, text=c.id, values=('Dir'), image=ico_folder, iid=c.iid, open=False)
-                if c.children:
-                    tree.insert(c.iid, tk.END, text='/...', iid=-dummycount, open=False)
-                    dummycount += 1
-            else:
-                tree.insert(piid, tk.END, text=c.id, values=('File'), image=ico_file, iid=c.iid, open=False)
+    for c in seektree(file, int(piid)):
+        if c[2]:
+            tree.insert(piid, tk.END, text=c[1], values=('Dir'), image=ico_folder, iid=c[0], open=False)
+            # if c.children:
+            tree.insert(c[0], tk.END, text='/...', iid=-dummycount, open=False)
+            dummycount += 1
+        else:
+            tree.insert(piid, tk.END, text=c[1], values=('File'), image=ico_file, iid=c[0], open=False)
 
     bt_open.configure(state='normal')
-    pass
+    return
 
 
 def treeexpand(event):
@@ -115,7 +95,6 @@ def treeexpand(event):
     root.update_idletasks()
     try:
         piid = tree.selection()[0]
-        # if tree.item(tree.get_children(piid)[0])['text'] == '/...':
         if not tree.tag_has('ld', piid):
             treelevel(piid)
             tree.delete(tree.get_children(piid)[0])
@@ -127,12 +106,14 @@ def treeexpand(event):
 
 def rmenu_raise(event):
     try:
+        iid = tree.identify_row(event.y)
+        if iid:
+            tree.selection_set(iid)
         rmenu.tk_popup(event.x_root, event.y_root)
     finally:
         rmenu.grab_release()
 
 
-# TODO broken
 def copypath():
     item_iid = tree.selection()[0]
     parent_iid = tree.parent(item_iid)
@@ -155,8 +136,8 @@ def cleanup():
 
 
 file_path = ''
+file = None
 dummycount = 2
-tr = at.AnyNode(id=-1)
 
 root = tk.Tk()
 root.title('tree4eyes')
