@@ -238,6 +238,8 @@ class t4i(tk.Frame):
         self.progtxt.set(__version__[2:])
 
         self.dummycount = 1
+        self.cached = []
+        self.cachelim = 25
 
 
     def open_WinASCIITree_th(self):
@@ -271,8 +273,21 @@ class t4i(tk.Frame):
                     self.infotxt.set('Loading file structure...')
                     log.info('Loading file structure')
                     self.expand(piid)
+                    self.cached.append(piid)
                     self.tree.delete(self.tree.get_children(piid)[0])
                     self.tree.item(piid, tags=('ld', 'dir', ))
+
+                    if len(self.cached) >= self.cachelim:
+                        for iid in self.cached:
+                            if self.tree.item(iid)['open'] == False:
+                                for c in self.tree.get_children(self.cached[0]):
+                                    self.tree.delete
+                                self.tree.insert(iid, tk.END, text='/...', iid=-self.dummycount, open=False)
+                                self.tree.item(iid, tags=('dir', ))
+                                self.dummycount += 1
+                                self.cached.remove(iid)
+                                log.info(f'Uncached item {iid}')
+                                break
         except:
             self.infotxt.set('Loading file structure failed')
             log.info('Loading file structure failed')
