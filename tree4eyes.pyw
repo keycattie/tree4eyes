@@ -189,7 +189,7 @@ class t4i(tk.Frame):
 
         parent.title('tree4eyes')
         parent.geometry('400x500')
-        ico_app_raw = 'R0lGODlhEAAQAHcAACH5BAkKAAAALAAAAAAQABAAgAAAAAgICAImhI+pGO1hYJKNLVipmzsCuVhd+JXkgT2VAqKhGj2sRXbjief6UQAAOw=='
+        ico_app_raw = 'R0lGODdhEAAQAMQAAAAAAAAAAB8fHzg4OEBAQICAgOPj4+bm5tvb2/////Ly8nh4eJ6ennh4eHh4eMLCwpaWlr29vWFhYU2JZQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACH5BAkKAAAALAAAAAAQABAAAAVD4CSOZGkGaGCS6DAIKVoGxZEUwRHFZG0rMVXvQGQsYANZyXdYQBjKiVDkQzAYs9UpqmV1pcGvSDjdKstZ7yw1ZotLIQA7'
         self.ico_app = tk.PhotoImage(data=ico_app_raw)
         parent.iconphoto(False, self.ico_app)
         parent.protocol('WM_DELETE_WINDOW', self.cleanup)  # needed coz shutdown hangs for large trees
@@ -231,7 +231,7 @@ class t4i(tk.Frame):
 
         ico_file_raw = 'R0lGODdhDAAMAHcAACH5BAkKAAAALAAAAAAMAAwAgAAAAAEBAQIXhI+pGh0LnpGJRkbtRDq2XXGY00EmUgAAOw=='
         self.ico_file = tk.PhotoImage(data=ico_file_raw)
-        ico_folder_raw = 'R0lGODlhDAAMAHcAACH5BAkKAAAALAAAAAAMAAwAgAAAAAEBAQIVhI+pyxuPnjzBVCrvVZp1Z2ViQyoFADs='
+        ico_folder_raw = 'R0lGODdhDAAMAIAAAAAAAAEBASH5BAkKAAAALAAAAAAMAAwAAAIVhI+pGt3rApApTuZutZij+GzeQpYFADs='
         self.ico_folder = tk.PhotoImage(data=ico_folder_raw)
 
         self.infotxt.set('tree4eyes r0')
