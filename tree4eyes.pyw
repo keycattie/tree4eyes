@@ -23,9 +23,7 @@ def _level(s):
 
 def _levelcheck(s, l):
     if s.startswith(('|   ', '    '), l * 4):
-        if not s.startswith(('|   ', '    ', '+---', '\---'), (l + 1) * 4):
-            return 1 # file
-        return 0 # inside
+        return 0 # inside or file
     elif s.startswith(('+---', '\---'), l * 4):
         return 2 # folder
     return -1 # outside
@@ -33,78 +31,92 @@ def _levelcheck(s, l):
 
 def seektree(file, iid):
     items = []
-    file.seek(int (iid), 0)
+    if iid in dmap:
+        for d in dmap[iid]:
+            file.seek(int(d), 0)
+            line = file.readline()
+            line = line[(4 * _level(line)):-1]
+            items.append((d, line, True))
+
+    file.seek(int(iid), 0)
     line = file.readline()
     last = line
     slv = _level(line)
     while True:
-        iid = len(last.encode('utf-8')) + iid + 1
+        iid += len(last.encode('utf-8')) + 1
         line = file.readline()
-        lv = _levelcheck(line, slv)
-        if lv == -1:
+        if not line:
             break
-        if (lv == 0) or ((len(line) - 1) - (4 * (slv + 1)) == 0):
+        lv = _levelcheck(line, slv)
+        if (lv == -1) or (lv == 2):
+            break
+        if ((len(line) - 1) - (4 * (slv + 1)) == 0):
             last = line
             continue
         last = line
-        line = line[(4 * (slv + 1)):(len(line) - 1)]
-        items.append((iid, line, lv == 2))
+        line = line[(4 * (slv + 1)):-1]
+        items.append((iid, line, False))
     return items
 
 
 def opentree():
-    global file, tr
-    # try:
-    bt_open.configure(state='disabled')
+    global file, tr, dmap
+    try:
+        bt_open.configure(state='disabled')
 
-    file_path = filedialog.askopenfilename(filetypes=((('Text files'), '*.txt'), (('All files'), '*.*')))
-    if not file_path:
-        return
+        file_path = filedialog.askopenfilename(filetypes=((('Text files'), '*.txt'), (('All files'), '*.*')))
+        if not file_path:
+            return
 
-    infotxt.set('Loading tree file...')
-    root.update_idletasks()
-    tree.delete(*tree.get_children())
-    file = open(file_path, 'r')
-    iid = 1
-    file.readline()
-    file.readline()
-    sk = file.tell()
-    path = file.readline()
-    tree.insert('', tk.END, text='root', values=('Dir'), iid=sk, open=True, tags=('ld', ))
-    treelevel(sk)
-    # except Exception as e:
-    #     # tree.delete(*tree.get_children()) # TODO do i need this???
-    #     infotxt.set('An error occurred loading the file')
-    #     root.update_idletasks()
-    #     messagebox.showerror('Open file failed', f'{type(e).__name__}\n{e}')
-    # finally: 
-    bt_open.configure(state='normal')
+        infotxt.set('Loading tree file...')
+        root.update_idletasks()
+        tree.delete(*tree.get_children())
+        file = open(file_path, 'r')
+        iid = 1
+        file.readline()
+        file.readline()
+        path = file.readline()
+        sk = file.tell()
+        tree.insert('', tk.END, text='root', values=('Dir'), iid=0, open=True, tags=('ld', ))
 
-    infotxt.set('File successfully loaded')
-    # root.update_idletasks()
+        dmap = dict()
+        cid = sk - 1
+        ids = [0]
+        lv = 0
+        lt = -1
+        prev = ''
+        for line in file.readlines():
+            cid += len(prev.encode('utf-8')) + 1
+            if _levelcheck(line, len(ids) - 1) == -1:
+                ids = ids[:_level(line)]
+            if _levelcheck(line, len(ids) - 1) == 2:
+                if not ids[-1] in dmap:
+                    dmap[ids[-1]] = list([])
+                dmap[ids[-1]].append(cid)
+                ids.append(cid)
+            prev = line
+
+        treelevel(0)
+
+        infotxt.set('File successfully loaded')
+    except Exception as e:
+        # tree.delete(*tree.get_children()) # TODO do i need this???
+        infotxt.set('An error occurred loading the file')
+        root.update_idletasks()
+        messagebox.showerror('Open file failed', f'{type(e).__name__}\n{e}')
+    finally: 
+        bt_open.configure(state='normal')
 
 
 def treelevel(piid):
     global dummycount, tr, file
-
-    # res = []
-    # import cProfile
-    # import pstats
-    # with cProfile.Profile() as pr:
-    res = seektree(file, int(piid))
-    # stats = pstats.Stats(pr)
-    # stats.sort_stats(pstats.SortKey.TIME)
-    # stats.print_stats()
-
-    for c in res:
+    for c in seektree(file, int(piid)):
         if c[2]:
             tree.insert(piid, tk.END, text=c[1], values=('Dir'), image=ico_folder, iid=c[0], open=False)
-            # if c.children:
             tree.insert(c[0], tk.END, text='/...', iid=-dummycount, open=False)
             dummycount += 1
         else:
             tree.insert(piid, tk.END, text=c[1], values=('File'), image=ico_file, iid=c[0], open=False)
-
     bt_open.configure(state='normal')
     return
 
@@ -156,6 +168,7 @@ def cleanup():
 
 file_path = ''
 file = None
+dmap = None
 dummycount = 2
 
 root = tk.Tk()
