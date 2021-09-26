@@ -5,6 +5,7 @@ import logging as log
 import os
 import time
 import base64
+import threading
 import tkinter as tk
 from tkinter import ttk
 from tkinter import filedialog
@@ -23,7 +24,7 @@ class WinASCIITree:
         else:
             log.warning('No info updates')
         if self.progress:
-            self.progress.set("")
+            self.progress.set('')
         else:
             log.warning('No progress updates')
         self.file = open(self.path, 'r')
@@ -41,7 +42,7 @@ class WinASCIITree:
         _stime = time.time() 
         log.info(f'Building folder map for \"{self.path}\" size {(_fsize / 1024):.2f}kB')
 
-        _updi = 0.25
+        _updi = 0.1
         if self.info:
             self.info.set('Building folder database')
         if self.progress:
@@ -69,13 +70,13 @@ class WinASCIITree:
                 ids.append(cid)
             prev = line
 
-            if time.time() - _updt > _updi:
-                if self.progress:
+            if self.progress:
+                if time.time() - _updt > _updi:
                     self.progress.set(f"{(cid / _fsize * 100):.2f}")
-                _updt += _updi
+                    _updt += _updi
 
         if self.progress:
-            self.progress.set('100')
+            self.progress.set('Done')
 
         _stime = time.time() - _stime
         log.info(f'Folder map length {len(dmap)} for \"{self.path}\" starting at \
@@ -88,7 +89,7 @@ class WinASCIITree:
         _stime = time.time() 
         log.info(f'Seeking iid {iid} in \"{self.path}\"')
 
-        _updi = 0.25
+        _updi = 0.1
         _siid = iid
         _lastd = iid
         _lastf = 0
@@ -129,7 +130,7 @@ class WinASCIITree:
             if _updf:
                 self.progress.set('0.00')
             else: 
-                self.progress.set('') # TODO file progress when no folders
+                self.progress.set('Unknown') # TODO file progress when no folders
 
         self.file.seek(int(iid), 0)
         line = self.file.readline()
@@ -150,12 +151,14 @@ class WinASCIITree:
             line = line[(4 * (slv + 1)):-1]
             items.append((iid, line, False, False))
 
-            if time.time() - _updt > _updi:
-                if _updf:
-                    if self.progress:
+            if self.progress:
+                if time.time() - _updt > _updi:
+                    if _updf:
                         self.progress.set(f"{((iid - _siid) / (_lastf - _siid) * 100):.2f}")
-                _updt += _updi
-                
+                    _updt += _updi
+           
+        if self.progress:     
+            self.progress.set('Done')
         _stime = time.time() - _stime 
         log.info(f'Seeked {len(items)} files in {(_stime * 1000):.2f}ms')
 
@@ -191,15 +194,23 @@ class t4i(tk.Frame):
         parent.iconphoto(False, self.ico_app)
         parent.protocol('WM_DELETE_WINDOW', self.cleanup)  # needed coz shutdown hangs for large trees
 
-
         self.infotxt = tk.StringVar()
+        self.progtxt = tk.StringVar()
+
+        self.menubar = tk.Menu(self)
+        self.filemenu = tk.Menu(self.menubar, tearoff=0)
+        self.filemenu.add_command(label="Open...", underline=0, command=self.open_WinASCIITree_th)
+        self.filemenu.add_separator()
+        self.filemenu.add_command(label="Exit", underline=1, command=self.quit)
+        self.menubar.add_cascade(label="File", underline=0, menu=self.filemenu)
+        parent.config(menu=self.menubar)
 
         self.bar = tk.Frame(self)
-        self.bt_open = tk.Button(self.bar, text='Open...', command=self.open_WinASCIITree)
-        self.bt_open.pack(side=tk.LEFT, padx=5, pady=5, ipadx=2)
-        self.l_infotxt=tk.Label(self.bar, textvariable=self.infotxt, width=255)
-        self.l_infotxt.pack(side=tk.LEFT, fill='x')
-        self.bar.pack(side=tk.TOP, fill='x')
+        self.l_infotxt=tk.Label(self.bar, textvariable=self.infotxt, anchor=tk.W)
+        self.l_progtxt=tk.Label(self.bar, textvariable=self.progtxt, anchor=tk.E)
+        self.l_infotxt.pack(side=tk.LEFT)
+        self.l_progtxt.pack(side=tk.RIGHT)
+        self.bar.pack(side=tk.BOTTOM, fill=tk.X)
 
         self.scrollbar = tk.Scrollbar(self, orient=tk.VERTICAL)
         self.tree = ttk.Treeview(self, show='tree', yscrollcommand=self.scrollbar.set)
@@ -216,42 +227,55 @@ class t4i(tk.Frame):
         self.rmenu = tk.Menu(self.tree, tearoff=0)
         self.rmenu.add_command(label='Copy path', command=self.copypath)
         self.tree.bind('<Button-3>', self.rmenu_raise)
-        self.tree.bind('<<TreeviewOpen>>', self.treeexpand)
-
+        self.tree.bind('<<TreeviewOpen>>', self.treeload_th)
 
         ico_file_raw = 'R0lGODdhDAAMAHcAACH5BAkKAAAALAAAAAAMAAwAgAAAAAEBAQIXhI+pGh0LnpGJRkbtRDq2XXGY00EmUgAAOw=='
         self.ico_file = tk.PhotoImage(data=ico_file_raw)
         ico_folder_raw = 'R0lGODlhDAAMAHcAACH5BAkKAAAALAAAAAAMAAwAgAAAAAEBAQIVhI+pyxuPnjzBVCrvVZp1Z2ViQyoFADs='
         self.ico_folder = tk.PhotoImage(data=ico_folder_raw)
 
-        self.infotxt.set('tree4eyes r0 ' + __version__[2:])
-      
+        self.infotxt.set('tree4eyes r0')
+        self.progtxt.set(__version__[2:])
 
-        
         self.dummycount = 1
 
 
+    def open_WinASCIITree_th(self):
+        thread = threading.Thread(target=self.open_WinASCIITree)
+        thread.start()
 
-        #     self.infotxt.set('File successfully loaded')
-        # except Exception as e:
-        #     # tree.delete(*tree.get_children()) # TODO do i need this???
-        #     self.infotxt.set('An error occurred loading the file')
-        #     self.update_idletasks()
-        #     messagebox.showerror('Open file failed', f'{type(e).__name__}\n{e}')
-        # finally: 
-        #     self.bt_open.configure(state='normal')
 
     def open_WinASCIITree(self):
         log.info('Opening new file')
-        self.bt_open.configure(state="disabled")
+        self.infotxt.set('Opening file...')
         path = filedialog.askopenfilename(filetypes=((('Text files'), '*.txt'), (('All files'), '*.*')))
         if path:
-            self.codec = WinASCIITree(path)
+            self.codec = WinASCIITree(path, info=self.infotxt, progress=self.progtxt)
             self.tree.delete(*self.tree.get_children())
             self.expand('')
         else:
-            raise NotImplementedError()
-        self.bt_open.configure(state='normal')
+            log.info('Opening file canceled')
+            self.infotxt.set('Opening file canceled')
+
+
+    def treeload_th(self, event):
+        thread = threading.Thread(target=self.treeload(event))
+        thread.start()
+
+
+    def treeload(self, event):
+        try:
+            piid = self.tree.selection()[0]
+            if not self.tree.tag_has('ld', piid) and self.tree.tag_has('dir', piid) \
+                and self.tree.get_children(piid):
+                    self.infotxt.set('Loading file structure...')
+                    log.info('Loading file structure')
+                    self.expand(piid)
+                    self.tree.delete(self.tree.get_children(piid)[0])
+                    self.tree.item(piid, tags=('ld', 'dir', ))
+        except:
+            self.infotxt.set('Loading file structure failed')
+            log.info('Loading file structure failed')
 
 
     def expand(self, spiid):
@@ -268,19 +292,6 @@ class t4i(tk.Frame):
                     self.dummycount += 1
             else:
                 self.tree.insert(spiid, tk.END, text=c[1], image=self.ico_file, iid=c[0], open=False)
-        self.bt_open.configure(state='normal')
-        return
-
-            
-    def copypath(self):
-        item_iid = tree.selection()[0]
-        parent_iid = tree.parent(item_iid)
-        s = tree.item(item_iid)['text']
-        while parent_iid:
-            s = tree.item(parent_iid)['text'] + '\\' + s
-            parent_iid = tree.parent(parent_iid)
-        root.clipboard_clear()
-        root.clipboard_append(s)
         return
 
 
@@ -293,20 +304,22 @@ class t4i(tk.Frame):
         finally:
             self.rmenu.grab_release()
 
-
-    def treeexpand(self, event):
-        self.infotxt.set('Loading file structure...')
-        self.update_idletasks()
-        try:
-            piid = self.tree.selection()[0]
-            if not self.tree.tag_has('ld', piid) and self.tree.tag_has('dir', piid):
-                if self.tree.get_children(piid):
-                    self.expand(piid)
-                    self.tree.delete(self.tree.get_children(piid)[0])
-                    self.tree.item(piid, tags=('ld', 'dir', ))
-        finally:
-            self.infotxt.set('')
-            self.update_idletasks()
+            
+    def copypath(self):
+        if not self.tree.selection():
+            return
+        item_iid = self.tree.selection()[0]
+        parent_iid = self.tree.parent(item_iid)
+        s = self.tree.item(item_iid)['text']
+        while parent_iid:
+            s = self.tree.item(parent_iid)['text'] + '\\' + s
+            parent_iid = self.tree.parent(parent_iid)
+        self.clipboard_clear()
+        self.clipboard_append(s)
+        self.infotxt.set('Path copied')
+        self.progtxt.set('')
+        log.info(f'Path copied \"{s}\"')
+        return
 
 
     def cleanup(self):
