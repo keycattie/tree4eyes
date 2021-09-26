@@ -199,9 +199,11 @@ class t4i(tk.Frame):
 
         self.menubar = tk.Menu(self)
         self.filemenu = tk.Menu(self.menubar, tearoff=0)
-        self.filemenu.add_command(label="Open...", underline=0, command=self.open_WinASCIITree_th)
+        self.filemenu.add_command(label="Open...", underline=0, command=self.open_WinASCIITree_th, accelerator="Ctrl+O")
+        self.bind_all("<Control-o>", lambda _ : self.open_WinASCIITree_th())
         self.filemenu.add_separator()
-        self.filemenu.add_command(label="Exit", underline=1, command=self.quit)
+        self.filemenu.add_command(label="Exit", underline=1, command=self.quit, accelerator="Ctrl+Q")
+        self.bind_all("<Control-q>", lambda _ : self.quit())
         self.menubar.add_cascade(label="File", underline=0, menu=self.filemenu)
         parent.config(menu=self.menubar)
 
@@ -225,8 +227,9 @@ class t4i(tk.Frame):
         self.scrollbar.config(command=self.tree.yview)
 
         self.rmenu = tk.Menu(self.tree, tearoff=0)
-        self.rmenu.add_command(label='Copy path', command=self.copypath)
+        self.rmenu.add_command(label='Copy path', command=self.copypath, accelerator="Ctrl+C")
         self.tree.bind('<Button-3>', self.rmenu_raise)
+        self.tree.bind('<Control-c>', lambda _ : self.copypath())
         self.tree.bind('<<TreeviewOpen>>', self.treeload_th)
 
         ico_file_raw = 'R0lGODdhDAAMAHcAACH5BAkKAAAALAAAAAAMAAwAgAAAAAEBAQIXhI+pGh0LnpGJRkbtRDq2XXGY00EmUgAAOw=='
@@ -255,6 +258,8 @@ class t4i(tk.Frame):
             self.codec = WinASCIITree(path, info=self.infotxt, progress=self.progtxt)
             self.tree.delete(*self.tree.get_children())
             self.expand('')
+            self.tree.focus(self.tree.get_children()[0])
+            self.tree.selection_set(self.tree.get_children()[0])
         else:
             log.info('Opening file canceled')
             self.infotxt.set('Opening file canceled')
