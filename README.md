@@ -69,5 +69,3 @@ Feel free to create issue reports or feature requests. This is a small project i
     - copy path of selected tree item
     - file and folder icons
 
-
-
