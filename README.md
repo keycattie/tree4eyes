@@ -1,4 +1,4 @@
-# tree4yeys
+# tree4eyes
 
 Small and simple app to help you browse tree command output files with ease!
 
