@@ -119,7 +119,8 @@ class WinASCIITree:
                         self.progress.set(f"{((d - iid) / (_lastd - iid) * 100):.2f}")
                     _updt += _updi
         _stime = time.time() - _stime 
-        log.info(f'Seeked {len(items)} folders in {(_stime * 1000):.2f}ms')
+        _dcount = len(items)
+        log.info(f'Seeked {_dcount} folders in {(_stime * 1000):.2f}ms')
         _stime = time.time() 
 
         _updf = _lastd != _siid
@@ -130,7 +131,7 @@ class WinASCIITree:
             if _updf:
                 self.progress.set('0.00')
             else: 
-                self.progress.set('Unknown') # TODO file progress when no folders
+                self.progress.set('...') # TODO file progress when no folders
 
         self.file.seek(int(iid), 0)
         line = self.file.readline()
@@ -157,10 +158,12 @@ class WinASCIITree:
                         self.progress.set(f"{((iid - _siid) / (_lastf - _siid) * 100):.2f}")
                     _updt += _updi
            
+        if self.info:
+            self.info.set(f'Loaded {len(items) - _dcount} files and {_dcount} folders')
         if self.progress:     
-            self.progress.set('Done')
+            self.progress.set('')
         _stime = time.time() - _stime 
-        log.info(f'Seeked {len(items)} files in {(_stime * 1000):.2f}ms')
+        log.info(f'Seeked {len(items) - _dcount} files in {(_stime * 1000):.2f}ms')
 
         return items
 
