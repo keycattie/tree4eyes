@@ -1,5 +1,5 @@
 # tree4eyes r0
-__version__ = 'r0v0.1'
+__version__ = 'r0v0.2'
 
 import logging as log
 import os
@@ -338,7 +338,7 @@ class t4i(tk.Frame):
         t.insert('1.0',f"""tree4eyes r0
 version {__version__[2:]}
 Browse tree command output files with ease!
-Supports Window's ASCII trees.
+Supports Windows' ASCII trees.
 You can generate those by running
     tree /f /a > output_file.txt
 on the desired folder.
