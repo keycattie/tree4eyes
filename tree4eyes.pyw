@@ -1,5 +1,5 @@
 # tree4eyes r0
-__version__ = 'r0v0.1-dev.pooling.1'
+__version__ = 'r0v0.1'
 
 import logging as log
 import os
