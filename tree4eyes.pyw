@@ -202,6 +202,9 @@ class t4i(tk.Frame):
         self.filemenu.add_command(label="Open...", underline=0, command=self.open_WinASCIITree_th, accelerator="Ctrl+O")
         self.bind_all("<Control-o>", lambda _ : self.open_WinASCIITree_th())
         self.filemenu.add_separator()
+        self.filemenu.add_command(label="Help/About", underline=0, command=self.helpabout, accelerator="Ctrl+/")
+        self.bind_all("<Control-/>", lambda _ : self.helpabout())
+        self.filemenu.add_separator()
         self.filemenu.add_command(label="Exit", underline=1, command=self.quit, accelerator="Ctrl+Q")
         self.bind_all("<Control-q>", lambda _ : self.quit())
         self.menubar.add_cascade(label="File", underline=0, menu=self.filemenu)
@@ -240,6 +243,7 @@ class t4i(tk.Frame):
         self.infotxt.set('tree4eyes r0')
         self.progtxt.set(__version__[2:])
 
+        self.modal = 0
         self.dummycount = 1
         self.cached = []
         self.cachelim = 25
@@ -341,6 +345,45 @@ class t4i(tk.Frame):
         log.info(f'Path copied \"{s}\"')
         return
 
+
+    def helpabout(self):
+        if self.modal > 0:
+            self.aw.destroy()
+            return
+        self.modal += 1
+        self.aw = tk.Toplevel(self)
+        self.aw.parent = self
+        self.aw.geometry('360x300')
+        self.aw.geometry(f'+{(self.winfo_rootx() + self.winfo_width()) % root.winfo_screenwidth()}+\
+{self.winfo_rooty() % root.winfo_screenheight()}')
+        self.aw.resizable(0, 0)
+        t = tk.Text(self.aw, padx=5, pady=5)
+        t.insert('1.0',f"""tree4eyes r0
+version {__version__[2:]}
+Browse tree command output files with ease!
+Supports Window's ASCII trees.
+You can generate those by running
+    tree /f /a > output_file.txt
+on the desired folder.
+
+Navigation:
+Ctrl+/    This help window (or close it)
+Ctrl+O    Select a file to open 
+Ctrl+C    Copy path of selected line
+Arrows    Navigate tree
+Ctrl+Q    Quit app
+
+This is an open source project under
+the MIT license, you can find it here:
+https://github.com/keycattie/tree4eyes
+""")
+        t.pack(fill=tk.BOTH)
+        t['state'] = 'disabled'
+        self.aw.focus_set()
+        # self.aw.grab_set()
+        self.aw.transient(self)
+        self.aw.wait_window(self.aw)
+        self.modal -= 1
 
     def cleanup(self):
         for i in self.tree.get_children():
