@@ -236,7 +236,7 @@ class t4i(tk.Frame):
         self.rmenu.add_command(label='Copy path', command=self.copypath, accelerator="Ctrl+C")
         self.tree.bind('<Button-3>', self.rmenu_raise)
         self.tree.bind('<Control-c>', lambda _ : self.copypath())
-        self.tree.bind('<<TreeviewOpen>>', self.treeload_th)
+        self.tree.bind('<<TreeviewOpen>>', self.treeload)
 
         ico_file_raw = 'R0lGODdhDAAMAHcAACH5BAkKAAAALAAAAAAMAAwAgAAAAAEBAQIXhI+pGh0LnpGJRkbtRDq2XXGY00EmUgAAOw=='
         self.ico_file = tk.PhotoImage(data=ico_file_raw)
@@ -262,8 +262,8 @@ class t4i(tk.Frame):
         self.infotxt.set('Opening file...')
         path = filedialog.askopenfilename(filetypes=((('Text files'), '*.txt'), (('All files'), '*.*')))
         if path:
-            self.codec = WinASCIITree(path, info=self.infotxt, progress=self.progtxt)
             self.tree.delete(*self.tree.get_children())
+            self.codec = WinASCIITree(path, info=self.infotxt, progress=self.progtxt)
             self.expand('')
             self.tree.focus(self.tree.get_children()[0])
             self.tree.selection_set(self.tree.get_children()[0])
@@ -272,44 +272,44 @@ class t4i(tk.Frame):
             self.infotxt.set('Opening file canceled')
 
 
-    def treeload_th(self, event):
-        thread = threading.Thread(target=self.treeload(event))
-        thread.start()
-
-
     def treeload(self, event):
-        try:
-            piid = self.tree.selection()[0]
-            if not self.tree.tag_has('ld', piid) and self.tree.tag_has('dir', piid) \
-                and self.tree.get_children(piid):
-                    self.infotxt.set('Loading file structure...')
-                    log.info('Loading file structure')
-                    self.expand(piid)
-                    self.cached.append(piid)
-                    self.tree.delete(self.tree.get_children(piid)[0])
-                    self.tree.item(piid, tags=('ld', 'dir', ))
-
-                    if len(self.cached) >= self.cachelim:
-                        for iid in self.cached:
-                            if self.tree.item(iid)['open'] == False:
-                                for c in self.tree.get_children(self.cached[0]):
-                                    self.tree.delete
-                                self.tree.insert(iid, tk.END, text='/...', iid=-self.dummycount, open=False)
-                                self.tree.item(iid, tags=('dir', ))
-                                self.dummycount += 1
-                                self.cached.remove(iid)
-                                log.info(f'Uncached item {iid}')
-                                break
-        except:
-            self.infotxt.set('Loading file structure failed')
-            log.info('Loading file structure failed')
+        piid = self.tree.selection()[0]
+        if not self.tree.tag_has('ld', piid) and self.tree.tag_has('dir', piid) \
+            and self.tree.get_children(piid):
+                log.debug(f'Cache of {len(self.cached)}')
+                if len(self.cached) >= self.cachelim:
+                    for iid in self.cached:
+                        if not self.tree.exists(iid):
+                            log.debug(f'Item {iid} uncached (already free)')
+                            self.cached.remove(iid)
+                            continue
+                        if self.tree.item(iid)['open'] == True:
+                            log.debug(f'Item {iid} not uncached (skipped)')
+                            continue
+                        ciids = [*self.tree.get_children(iid)]
+                        for c in ciids:
+                            if c in self.cached:
+                                log.debug(f'Item {c} uncached (cumulative)')
+                                self.cached.remove(c)
+                        self.cached.remove(iid)
+                        self.tree.delete(*self.tree.get_children(iid))
+                        self.tree.insert(iid, tk.END, text='/...', iid=-self.dummycount, open=False)
+                        self.tree.item(iid, tags=('dir', ))
+                        self.dummycount += 1
+                        log.debug(f'Item {iid} uncached')
+                        if len(self.cached) < self.cachelim:
+                            break
+                self.cached.append(piid)
+                self.tree.delete(self.tree.get_children(piid)[0])
+                self.tree.item(piid, tags=('ld', 'dir', ))
+                self.expand(piid)
 
 
     def expand(self, spiid):
         piid = self.codec.start
         if spiid != '': 
             piid = int(spiid)
-        log.info(f'Populating tree at {piid}')
+        log.info(f'Populating item {piid}')
         for c in self.codec.seek(piid):
             if c[2]:
                 self.tree.insert(spiid, tk.END, text=c[1], image=self.ico_folder, iid=c[0], open=False)
