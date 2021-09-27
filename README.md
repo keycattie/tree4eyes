@@ -25,7 +25,6 @@ Feel free to create issue reports or feature requests. This is a small project i
 - can open and try to process literally any file you feed it
 - `PgUP` and `PgDN` navigation is broken
 - tree is not focused after oppening a file *(workaround: press `Tab`)*
-- input is not blocked when loading a file
 - no logging file *(i dont think its needed for now)* 
 - taskbar icon can default to default one
 - sloppy and ugly help window
@@ -35,6 +34,18 @@ Feel free to create issue reports or feature requests. This is a small project i
 **License:** MIT
 
 **Changelog:**
+
+`r0 v0.2` **caching patch**
+- fixes
+    - uncaching folders containing cached folders breaks
+    - tree is not cleared and can be interacted with while loading a new file *(`input is not blocked when loading a file`)*
+    - some spelling in help window
+- engine
+    - removed threading for tree seeking
+    - added more debug level logging
+    - changed some logging messages
+- progress UI
+    - no UI updates if the thread is locked (eg. while seeking a folder)
 
 `r0 v0.1` **first release**
 - architecture overhaul
