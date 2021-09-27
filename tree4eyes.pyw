@@ -89,18 +89,12 @@ class WinASCIITree:
         _stime = time.time() 
         log.info(f'Seeking iid {iid} in \"{self.path}\"')
 
-        _updi = 0.1
         _siid = iid
         _lastd = iid
         _lastf = 0
 
         items = []
         if iid in self.dmap:
-            if self.info:
-                self.info.set('Loading folders')
-            if self.progress:
-                self.progress.set('0.00')
-            _updt = time.time()
             _lastd = self.dmap[iid][-1]
             _lastf = self.dmap[iid][0]
 
@@ -114,24 +108,10 @@ class WinASCIITree:
                 else:
                     items.append((d, line, True, True))
 
-                if time.time() - _updt > _updi:
-                    if self.progress:
-                        self.progress.set(f"{((d - iid) / (_lastd - iid) * 100):.2f}")
-                    _updt += _updi
         _stime = time.time() - _stime 
         _dcount = len(items)
         log.info(f'Seeked {_dcount} folders in {(_stime * 1000):.2f}ms')
         _stime = time.time() 
-
-        _updf = _lastd != _siid
-        _updt = time.time()
-        if self.info:
-            self.info.set('Loading files')
-        if self.progress:
-            if _updf:
-                self.progress.set('0.00')
-            else: 
-                self.progress.set('...') # TODO file progress when no folders
 
         self.file.seek(int(iid), 0)
         line = self.file.readline()
@@ -151,12 +131,6 @@ class WinASCIITree:
             last = line
             line = line[(4 * (slv + 1)):-1]
             items.append((iid, line, False, False))
-
-            if self.progress:
-                if time.time() - _updt > _updi:
-                    if _updf:
-                        self.progress.set(f"{((iid - _siid) / (_lastf - _siid) * 100):.2f}")
-                    _updt += _updi
            
         if self.info:
             self.info.set(f'Loaded {len(items) - _dcount} files and {_dcount} folders')
