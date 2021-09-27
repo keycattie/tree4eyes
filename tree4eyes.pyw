@@ -1,5 +1,5 @@
 # tree4eyes r0
-__version__ = 'r0v0.1'
+__version__ = 'r0v0.2'
 
 import logging as log
 import os
@@ -89,18 +89,12 @@ class WinASCIITree:
         _stime = time.time() 
         log.info(f'Seeking iid {iid} in \"{self.path}\"')
 
-        _updi = 0.1
         _siid = iid
         _lastd = iid
         _lastf = 0
 
         items = []
         if iid in self.dmap:
-            if self.info:
-                self.info.set('Loading folders')
-            if self.progress:
-                self.progress.set('0.00')
-            _updt = time.time()
             _lastd = self.dmap[iid][-1]
             _lastf = self.dmap[iid][0]
 
@@ -114,23 +108,10 @@ class WinASCIITree:
                 else:
                     items.append((d, line, True, True))
 
-                if time.time() - _updt > _updi:
-                    if self.progress:
-                        self.progress.set(f"{((d - iid) / (_lastd - iid) * 100):.2f}")
-                    _updt += _updi
         _stime = time.time() - _stime 
-        log.info(f'Seeked {len(items)} folders in {(_stime * 1000):.2f}ms')
+        _dcount = len(items)
+        log.info(f'Seeked {_dcount} folders in {(_stime * 1000):.2f}ms')
         _stime = time.time() 
-
-        _updf = _lastd != _siid
-        _updt = time.time()
-        if self.info:
-            self.info.set('Loading files')
-        if self.progress:
-            if _updf:
-                self.progress.set('0.00')
-            else: 
-                self.progress.set('Unknown') # TODO file progress when no folders
 
         self.file.seek(int(iid), 0)
         line = self.file.readline()
@@ -150,17 +131,13 @@ class WinASCIITree:
             last = line
             line = line[(4 * (slv + 1)):-1]
             items.append((iid, line, False, False))
-
-            if self.progress:
-                if time.time() - _updt > _updi:
-                    if _updf:
-                        self.progress.set(f"{((iid - _siid) / (_lastf - _siid) * 100):.2f}")
-                    _updt += _updi
            
+        if self.info:
+            self.info.set(f'Loaded {len(items) - _dcount} files and {_dcount} folders')
         if self.progress:     
-            self.progress.set('Done')
+            self.progress.set('')
         _stime = time.time() - _stime 
-        log.info(f'Seeked {len(items)} files in {(_stime * 1000):.2f}ms')
+        log.info(f'Seeked {len(items) - _dcount} files in {(_stime * 1000):.2f}ms')
 
         return items
 
@@ -233,7 +210,7 @@ class t4i(tk.Frame):
         self.rmenu.add_command(label='Copy path', command=self.copypath, accelerator="Ctrl+C")
         self.tree.bind('<Button-3>', self.rmenu_raise)
         self.tree.bind('<Control-c>', lambda _ : self.copypath())
-        self.tree.bind('<<TreeviewOpen>>', self.treeload_th)
+        self.tree.bind('<<TreeviewOpen>>', self.treeload)
 
         ico_file_raw = 'R0lGODdhDAAMAHcAACH5BAkKAAAALAAAAAAMAAwAgAAAAAEBAQIXhI+pGh0LnpGJRkbtRDq2XXGY00EmUgAAOw=='
         self.ico_file = tk.PhotoImage(data=ico_file_raw)
@@ -259,8 +236,8 @@ class t4i(tk.Frame):
         self.infotxt.set('Opening file...')
         path = filedialog.askopenfilename(filetypes=((('Text files'), '*.txt'), (('All files'), '*.*')))
         if path:
-            self.codec = WinASCIITree(path, info=self.infotxt, progress=self.progtxt)
             self.tree.delete(*self.tree.get_children())
+            self.codec = WinASCIITree(path, info=self.infotxt, progress=self.progtxt)
             self.expand('')
             self.tree.focus(self.tree.get_children()[0])
             self.tree.selection_set(self.tree.get_children()[0])
@@ -269,44 +246,44 @@ class t4i(tk.Frame):
             self.infotxt.set('Opening file canceled')
 
 
-    def treeload_th(self, event):
-        thread = threading.Thread(target=self.treeload(event))
-        thread.start()
-
-
     def treeload(self, event):
-        try:
-            piid = self.tree.selection()[0]
-            if not self.tree.tag_has('ld', piid) and self.tree.tag_has('dir', piid) \
-                and self.tree.get_children(piid):
-                    self.infotxt.set('Loading file structure...')
-                    log.info('Loading file structure')
-                    self.expand(piid)
-                    self.cached.append(piid)
-                    self.tree.delete(self.tree.get_children(piid)[0])
-                    self.tree.item(piid, tags=('ld', 'dir', ))
-
-                    if len(self.cached) >= self.cachelim:
-                        for iid in self.cached:
-                            if self.tree.item(iid)['open'] == False:
-                                for c in self.tree.get_children(self.cached[0]):
-                                    self.tree.delete
-                                self.tree.insert(iid, tk.END, text='/...', iid=-self.dummycount, open=False)
-                                self.tree.item(iid, tags=('dir', ))
-                                self.dummycount += 1
-                                self.cached.remove(iid)
-                                log.info(f'Uncached item {iid}')
-                                break
-        except:
-            self.infotxt.set('Loading file structure failed')
-            log.info('Loading file structure failed')
+        piid = self.tree.selection()[0]
+        if not self.tree.tag_has('ld', piid) and self.tree.tag_has('dir', piid) \
+            and self.tree.get_children(piid):
+                log.debug(f'Cache of {len(self.cached)}')
+                if len(self.cached) >= self.cachelim:
+                    for iid in self.cached:
+                        if not self.tree.exists(iid):
+                            log.debug(f'Item {iid} uncached (already free)')
+                            self.cached.remove(iid)
+                            continue
+                        if self.tree.item(iid)['open'] == True:
+                            log.debug(f'Item {iid} not uncached (skipped)')
+                            continue
+                        ciids = [*self.tree.get_children(iid)]
+                        for c in ciids:
+                            if c in self.cached:
+                                log.debug(f'Item {c} uncached (cumulative)')
+                                self.cached.remove(c)
+                        self.cached.remove(iid)
+                        self.tree.delete(*self.tree.get_children(iid))
+                        self.tree.insert(iid, tk.END, text='/...', iid=-self.dummycount, open=False)
+                        self.tree.item(iid, tags=('dir', ))
+                        self.dummycount += 1
+                        log.debug(f'Item {iid} uncached')
+                        if len(self.cached) < self.cachelim:
+                            break
+                self.cached.append(piid)
+                self.tree.delete(self.tree.get_children(piid)[0])
+                self.tree.item(piid, tags=('ld', 'dir', ))
+                self.expand(piid)
 
 
     def expand(self, spiid):
         piid = self.codec.start
         if spiid != '': 
             piid = int(spiid)
-        log.info(f'Populating tree at {piid}')
+        log.info(f'Populating item {piid}')
         for c in self.codec.seek(piid):
             if c[2]:
                 self.tree.insert(spiid, tk.END, text=c[1], image=self.ico_folder, iid=c[0], open=False)
@@ -361,7 +338,7 @@ class t4i(tk.Frame):
         t.insert('1.0',f"""tree4eyes r0
 version {__version__[2:]}
 Browse tree command output files with ease!
-Supports Window's ASCII trees.
+Supports Windows' ASCII trees.
 You can generate those by running
     tree /f /a > output_file.txt
 on the desired folder.
