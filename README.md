@@ -57,7 +57,7 @@ MIT
 
 `r0 v0.2` **caching patch**
 - fixes
-    - uncaching folders containing cached folders breaks: [#2](/../../issues/2)
+    - uncaching folders containing cached folders breaks: [`#2`](/../../issues/2)
     - tree is not cleared and can be interacted with while loading a new file *(`input is not blocked when loading a file`)*
     - some spelling in help window
 - engine
